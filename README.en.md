@@ -8,6 +8,8 @@ A pixel art climbing game: a miner climbs a volcano chimney by jumping from one 
 
 - **Space**, **↑** or **click**: hold to charge the jump, release to jump to the opposite wall.
 - **P** or **Esc**: pause.
+- **Gamepad**: hold **A** (or B, X, Y, RB, RT, d-pad up) to charge, release to jump; **Start** to pause.
+- **FULLSCREEN**: the chimney fills the screen. On a big screen, the playfield grows with the window.
 
 ## How it works
 
@@ -18,6 +20,20 @@ A pixel art climbing game: a miner climbs a volcano chimney by jumping from one 
 - The **saws** move back and forth between the walls. Higher up, others go up and down along the walls.
 - **Gems** are picked up in flight.
 - The **lava** rises faster and faster with height, and is never far behind.
+
+## The gem shop
+
+The gems you pick up go to your purse (those from earlier games are already there). Three items, bought once and for all:
+
+- **Ice axe** (30 gems): once per climb, while falling, press to drive it into the nearest wall and hang on.
+- **Boots** (50 gems): charged jumps go 15 % higher.
+- **Helmet** (40 gems): once per climb, a fang does not kill you; the helmet shatters and you get a short moment to get clear.
+
+The ice axe and helmet still ready are shown at the top left, under the height.
+
+## Climbing higher
+
+The volcanic rock gives way to **crystals** at 100 m, then to the **volcano's mouth under the stars** at 250 m, with a banner at each step.
 
 ## Statistics
 

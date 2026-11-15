@@ -1,21 +1,25 @@
 // Cheminée : un mineur grimpe une cheminée de volcan en sautant d'une paroi à l'autre, avant que la lave ne le rattrape.
 // Jeu NeoDex en pixel art dessiné à la main (police bitmap, cadres et boutons en pixels). Il tourne dans le bac à sable de NeoDex.
 const HTML = `<div class="appWrap wide">
-  <div class="agHead"><span class="label">Cheminée</span><span class="hint">Maintiens Espace (ou le clic) pour charger, lâche pour sauter · P : pause</span></div>
+  <div class="agHead"><span class="label">Cheminée</span><span class="hint">Maintiens Espace (ou le clic, ou A à la manette) pour charger, lâche pour sauter · P : pause</span></div>
   <div class="gMain"><div class="gameBox"><canvas id="chCanvas" width="144" height="204" role="img" aria-label="Cheminée"></canvas></div>
     <div class="gSide">
       <div class="sysCard"><b>RECORDS</b><div class="gStats" id="chStats"></div></div>
-      <div class="row"><button class="btn main" id="chNew">NOUVELLE ASCENSION</button></div>
-      <div class="hint">Plus tu maintiens, plus le saut monte : les points blancs montrent où tu vas atterrir. Un saut bref redescend, pratique pour passer sous une scie. Évite les crocs plantés dans les parois (repérés par une trace rouge) et ramasse les gemmes. La lave monte de plus en plus vite.</div>
+      <div class="row"><button class="btn main" id="chNew">NOUVELLE ASCENSION</button><button class="btn" id="chFs">PLEIN ÉCRAN</button></div>
+      <div class="sysCard"><b>MAGASIN DE GEMMES</b><span class="hint" id="chWallet"></span><div class="chShop" id="chShop"></div></div>
+      <div class="hint">Plus tu maintiens, plus le saut monte : les points blancs montrent où tu vas atterrir. Un saut bref redescend, pratique pour passer sous une scie. Évite les crocs plantés dans les parois (repérés par une trace rouge) et ramasse les gemmes : elles s'achètent au magasin. La lave monte de plus en plus vite. Plus haut, la roche laisse place aux cristaux (100 m), puis à la sortie du volcan sous les étoiles (250 m).</div>
     </div></div>
 </div>`;
 const CSS = `.gMain{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
 .gameBox{display:grid;place-items:center;padding:10px;background:#05010b;flex:0 0 auto;position:relative}
-.gameBox canvas{height:min(72vh,816px);width:auto;aspect-ratio:144/204;image-rendering:pixelated;cursor:var(--cp,pointer);touch-action:none}
+.gameBox canvas{height:max(300px,min(calc(100vh - 210px),1224px));width:auto;max-width:calc(100vw - 40px);aspect-ratio:144/204;image-rendering:pixelated;cursor:var(--cp,pointer);touch-action:none}
 .gSide{display:flex;flex-direction:column;gap:14px;flex:1;min-width:250px;max-width:420px}
 .gSide .sysCard{display:flex;flex-direction:column}
 .gStats{display:grid;grid-template-columns:1fr auto;gap:4px 14px}
-.gStats b{text-align:right}`;
+.gStats b{text-align:right}
+.gameBox:fullscreen{padding:0}
+.gameBox:fullscreen canvas{height:100vh;max-width:none}
+.chShop{display:flex;flex-direction:column;gap:8px;margin-top:8px}.chShop .btn{width:100%;justify-content:space-between}`;
 /* ---------- l'habillage pixel art, dessiné à la main : police bitmap (accents compris), cadres, boutons, icônes ----------
    Tout est en pixels pleins, agrandis par 2 sans lissage : aucun dégradé, aucune ombre floue. */
 const PXK = (() => {
@@ -327,6 +331,7 @@ const pxFont = (g, text, x, y, color, size = 8, align = 'left') => { const s = P
 const CH = {W: 144, H: 204, WALL: 18, PW: 10, PH: 12, G: .18, VX: 2.6, CHARGE: 40, VMIN: 2.4, VADD: 3.6};
 CH.L = CH.WALL; CH.R = CH.W - CH.WALL - CH.PW;  // x du grimpeur accroché à gauche / à droite
 const chs = gstore('cheminee', {games: 0, gems: 0, meters: 0});
+chs.wallet ??= chs.gems; chs.shop ??= {};  // le porte-monnaie (les gemmes déjà ramassées y sont), les objets achetés
 let ch = null;
 // le mineur, de profil vers la droite (accroché à la paroi gauche) ; miroir pour la paroi droite
 const CH_PAL = {k: '#1a0e14', h: '#ffd84a', H: '#c89a1a', l: '#fff6b0', s: '#ffd0a8', e: '#1a0e14', r: '#3a8ad8', R: '#1e5aa8', d: '#4a3a5a', b: '#8a4a1a', g: '#f0e8d8'};
@@ -353,12 +358,45 @@ function chRock(w, base, hi, lo, crack, seed) {
     if (r() < .5) { let cx = x + 3 + Math.floor(r() * 8), cy = y + 3; for (let i = 0; i < 6; i++) { px(g, crack, cx, cy); cx += Math.round(r() * 2 - 1); cy++; } }
     if (r() < .3) px(g, hi, x + 4 + Math.floor(r() * 6), y + 5 + Math.floor(r() * 6), 2, 1);
   } return c; }
+// le magasin : le piolet (s'accrocher une fois en l'air à la paroi la plus proche), les bottes (saut plus haut), le casque (résiste à un croc)
+const CH_ITEMS = [
+  {id: 'piolet', name: 'PIOLET', price: 30, tip: "Une fois par ascension : en pleine chute, appuie pour planter le piolet dans la paroi la plus proche et t'y accrocher."},
+  {id: 'bottes', name: 'BOTTES', price: 50, tip: 'Les sauts chargés montent plus haut (+15 %).'},
+  {id: 'casque', name: 'CASQUE', price: 40, tip: 'Une fois par ascension : un croc ne te tue pas, le casque se brise à sa place.'}];
+const chIcon = (rows, pal) => { const c = el('canvas'); c.width = rows[0].length; c.height = rows.length; sprite(c.getContext('2d'), rows, 0, 0, {k: '#1a0e14', ...pal}); return c; };
+const CH_ICON = {
+  piolet: chIcon(['.kkkkk.', 'kmmmmmk', 'kmkbkmk', '.k.bk.k', '...bk..', '..kb...', '..bk...', '.kb....'], {m: '#d8d8e8', b: '#a8642a'}),
+  casque: chIcon(['..kkk..', '.khhhk.', 'khhlhhk', 'khhhhhk', 'kkkkkkk'], {h: '#c8d0e0', l: '#fff6b0'}),
+  bottes: chIcon(['.kkk...', '.kbk...', '.kbk...', '.kbbkk.', '.kbbbbk', '.kkkkkk'], {b: '#a8642a'}),
+};
+const chVadd = () => CH.VADD * (chs.shop.bottes ? 1.15 : 1);
+// trois paliers en montant : la roche (jusqu'à 100 m), les cristaux (jusqu'à 250 m), la sortie du volcan sous les étoiles
+const chTier = y => -y < 1000 ? 0 : -y < 2500 ? 1 : 2;
+const CH_TIER_NAMES = ['', 'LES CRISTAUX', 'SOUS LES ÉTOILES'];
+function chCrystals(c, seed, cols, n) {  // des grappes de cristaux sur une tuile : prismes à pointe, face claire à gauche, sombre à droite, cernés de noir
+  const g = c.getContext('2d'), r = seeded(seed);
+  for (let i = 0; i < n; i++) { const x = 2 + Math.floor(r() * (c.width - 9)), y = 4 + Math.floor(r() * 50);
+    for (let k = 0; k < 2 + (r() < .5); k++) { const cx = x + k * 3, h = 6 + Math.floor(r() * 4) - k, cy = y + 9 - h;
+      px(g, '#100818', cx, cy - 1, 3, 1); px(g, '#100818', cx - 1, cy, 5, h + 1);  // le contour
+      px(g, cols[0], cx + 1, cy, 1, 1);  // la pointe
+      px(g, cols[0], cx, cy + 1, 1, h - 1); px(g, cols[1], cx + 1, cy + 1, 1, h - 1); px(g, cols[2], cx + 2, cy + 1, 1, h - 1); } }
+  return c;
+}
+function chSky(w, seed) {  // la nuit au-dessus du volcan : bleu profond, étoiles de trois éclats
+  const c = el('canvas'); c.width = w; c.height = 64; const g = c.getContext('2d'), r = seeded(seed); px(g, '#0a0c26', 0, 0, w, 64);
+  for (let y = 0; y < 64; y += 2) if (y % 4 === 0) px(g, '#0e1230', 0, y, w, 1);
+  for (let i = 0; i < 26; i++) { const x = Math.floor(r() * w), y = Math.floor(r() * 64), b = r(); px(g, b > .85 ? '#ffffff' : b > .5 ? '#c8d0f8' : '#5a6098', x, y); if (b > .93) { px(g, '#8890c8', x - 1, y); px(g, '#8890c8', x + 1, y); px(g, '#8890c8', x, y - 1); px(g, '#8890c8', x, y + 1); } }
+  return c;
+}
 const CH_WALL = chRock(CH.WALL, '#5a3a32', '#7e5646', '#2a1612', '#a8381a', 7), CH_BACK = chRock(CH.W - 2 * CH.WALL, '#2a1a1c', '#342224', '#180e10', '#5a1a10', 21);
+const CH_WALLS = [CH_WALL, chCrystals(chRock(CH.WALL, '#3a3058', '#5a4a80', '#1a1430', '#8a5af0', 11), 3, ['#e8d0ff', '#a878f8', '#5a2ab0'], 5),
+  chRock(CH.WALL, '#2a2a3a', '#4a4a64', '#121220', '#3a3a5a', 13)];
+const CH_BACKS = [CH_BACK, chCrystals(chRock(CH.W - 2 * CH.WALL, '#1e1830', '#282040', '#100c1a', '#3a2a6a', 23), 5, ['#a8f0ff', '#5ac8e8', '#2a6a98'], 9), chSky(CH.W - 2 * CH.WALL, 31)];
 const chDiff = () => Math.min(1, ch.top / 3000);
 const chHeight = () => Math.max(0, Math.floor(ch.top / 10));
 function chNew() {
   ch = Object.assign(ch || {tick: 0, raf: 0}, {seen: ch ? ch.tick : 0, mode: 'ready', x: CH.L, y: 0, vx: 0, vy: 0, side: -1, charge: 0, hold: false, slide: 0, top: 0,
-    cam: -CH.H * .6, lava: 150, gems: 0, dead: 0, record: false, spikes: [], saws: [], gemsL: [], dust: [], wallC: [-120, -170], sawC: -230, gemC: -90, rnd: seeded(Math.random() * 1e9 | 0)});
+    cam: -CH.H * .6, lava: 150, gems: 0, dead: 0, record: false, piolet: !!chs.shop.piolet, casque: !!chs.shop.casque, safe: 0, tier: 0, banner: null, crack: 0, spikes: [], saws: [], gemsL: [], dust: [], wallC: [-120, -170], sawC: -230, gemC: -90, rnd: seeded(Math.random() * 1e9 | 0)});
   chGen(ch.cam - CH.H);
 }
 // crée parois à pointes, scies et gemmes jusqu'à la hauteur upTo (y monde, négatif vers le haut) ; entre deux pointes, toujours au moins 40 px libres
@@ -382,13 +420,17 @@ let chac = null;
 function chBeep(f, d, type = 'triangle', slide = 0, vol = .06) { try { chac ??= new AudioContext(); const o = chac.createOscillator(), g = chac.createGain(), t = chac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(chac.destination); o.start(t); o.stop(t + d); } catch {} }
 function chDie(how) {
   if (ch.mode !== 'play') return;
+  if (how === 'pointes') {
+    if (ch.tick < ch.safe) return;  // le casque vient de se briser : un instant pour se dégager
+    if (ch.casque) { ch.casque = false; ch.safe = ch.tick + 90; ch.crack = ch.tick; chBeep(700, .25, 'square', 180, .05); return; }
+  }
   ch.mode = 'over'; ch.dead = 0; ch.how = how; ch.side = 0; ch.vy = how === 'lave' ? .5 : -3; ch.vx = 0;
   chBeep(how === 'lave' ? 220 : 520, .8, 'sawtooth', 50, .05);
-  const m = chHeight(); ch.record = best('cheminee', m); chs.meters += m; chs.gems += ch.gems; saveGames(); chInfo();
+  const m = chHeight(); ch.record = best('cheminee', m); chs.meters += m; chs.gems += ch.gems; chs.wallet += ch.gems; saveGames(); chInfo();
 }
 function chJump() {
   if (ch.side === 0 || (ch.mode !== 'play')) return;
-  ch.vy = -(CH.VMIN + ch.charge * CH.VADD); ch.vx = -ch.side * CH.VX; ch.side = 0;
+  ch.vy = -(CH.VMIN + ch.charge * chVadd()); ch.vx = -ch.side * CH.VX; ch.side = 0;
   chBeep(300 + ch.charge * 500, .14, 'square', 600 + ch.charge * 600, .04); ch.charge = 0; ch.slide = 0;
 }
 function chLand(side) {
@@ -413,6 +455,8 @@ function chUpdate() {
     if (ch.mode !== 'play') return;
   }
   ch.top = Math.max(ch.top, -ch.y);
+  if (chTier(-ch.top) > ch.tier) { ch.tier = chTier(-ch.top); ch.banner = {text: CH_TIER_NAMES[ch.tier], t: 150}; chBeep(523, .5, 'triangle', 1046, .05); }
+  if (ch.banner && --ch.banner.t <= 0) ch.banner = null;
   // la lave : lente au début, plus pressante en hauteur, et jamais à plus de 180 px sous le grimpeur
   ch.lava = Math.min(ch.lava - (.14 + d * .36), ch.y + 180);
   for (const s of ch.saws) if (!s.vert) { s.x += s.sp; if (s.x < CH.L + 8 || s.x > CH.R + CH.PW - 8) s.sp = -s.sp; }
@@ -428,7 +472,7 @@ function chUpdate() {
 }
 // la trajectoire que prendrait le saut chargé maintenant : quelques points, jusqu'à la paroi d'en face
 function chPath(charge) {
-  const pts = []; let x = ch.x, y = ch.y, vy = -(CH.VMIN + charge * CH.VADD), vx = -ch.side * CH.VX;
+  const pts = []; let x = ch.x, y = ch.y, vy = -(CH.VMIN + charge * chVadd()), vx = -ch.side * CH.VX;
   for (let i = 1; i < 120; i++) { vy = Math.min(6, vy + CH.G); y += vy; x += vx; if (x <= CH.L || x >= CH.R) { pts.push([x <= CH.L ? CH.L : CH.R, y, true]); break; } if (i % 4 === 0) pts.push([x, y]); }
   return pts;
 }
@@ -438,10 +482,11 @@ function chDraw() {
   g.imageSmoothingEnabled = false;
   // le fond (parallaxe à moitié) et les braises rougeoyantes dans les fissures
   const bo = ((Math.floor(-cam * .5) % 64) + 64) % 64;
-  for (let y = bo - 64; y < H; y += 64) g.drawImage(CH_BACK, WALL, y);
+  for (let y = bo - 64; y < H; y += 64) g.drawImage(CH_BACKS[chTier(cam + y + 32)], WALL, y);
+  if (chTier(cam + 30) === 2) { for (let yy = -10; yy <= 10; yy++) for (let xx = -10; xx <= 10; xx++) { const d = Math.hypot(xx, yy); if (d <= 10 && Math.hypot(xx - 4, yy - 3) > 8.5) px(g, d > 9 ? '#c8c0a0' : '#fff4d0', 96 + xx, 34 + yy); } }  // la lune, au-dessus du cratère
   // les parois et leur arête éclairée
   const wo = ((-cam % 64) + 64) % 64;
-  for (let y = wo - 64; y < H; y += 64) { g.drawImage(CH_WALL, 0, y); g.save(); g.translate(W, 0); g.scale(-1, 1); g.drawImage(CH_WALL, 0, y); g.restore(); }
+  for (let y = wo - 64; y < H; y += 64) { const wl = CH_WALLS[chTier(cam + y + 32)]; g.drawImage(wl, 0, y); g.save(); g.translate(W, 0); g.scale(-1, 1); g.drawImage(wl, 0, y); g.restore(); }
   px(g, '#a87a62', WALL - 1, 0, 1, H); px(g, '#a87a62', W - WALL, 0, 1, H); px(g, '#120a0e', WALL, 0, 1, H); px(g, '#120a0e', W - WALL - 1, 0, 1, H);
   // le sol de départ
   if (sy(0) < H) { px(g, '#1a0e14', WALL, sy(0), W - 2 * WALL, H); for (let x = WALL; x < W - WALL; x += 12) { px(g, '#4a3640', x + 1, sy(0) + 1, 10, 6); px(g, '#6a5060', x + 1, sy(0) + 1, 10, 1); } }
@@ -461,7 +506,8 @@ function chDraw() {
   if (ch.mode === 'play' && ch.side !== 0 && ch.hold) for (const [x, y, end] of chPath(ch.charge)) px(g, end ? '#ffd84a' : '#ffffff', Math.round(x + CH.PW / 2) - (end ? 1 : 0), sy(y - CH.PH / 2) - (end ? 1 : 0), end ? 3 : 1, end ? 3 : 1);
   // le grimpeur
   const face = ch.side ? (ch.side > 0 ? 1 : 0) : (ch.vx < 0 ? 1 : 0), pose = ch.mode === 'over' ? 'fall' : ch.side === 0 ? 'jump' : ch.hold && ch.charge > .05 ? 'crouch' : 'cling';
-  if (!(ch.mode === 'over' && ch.how === 'lave' && ch.dead > 30)) g.drawImage(CH_SPR[pose][face], Math.round(ch.x), sy(ch.y) - CH.PH);
+  if (!(ch.mode === 'over' && ch.how === 'lave' && ch.dead > 30) && !(ch.tick < ch.safe && (ch.tick >> 2) % 2)) g.drawImage(CH_SPR[pose][face], Math.round(ch.x), sy(ch.y) - CH.PH);
+  if (ch.crack && ch.tick - ch.crack < 30) for (let i = 0; i < 6; i++) { const a = i * 1.05, r = (ch.tick - ch.crack) * .8; px(g, i % 2 ? '#c8d0e0' : '#ffffff', ch.x + 5 + Math.cos(a) * r, sy(ch.y) - CH.PH + 1 + Math.sin(a) * r - (ch.tick - ch.crack) * .3, 2, 1); }  // le casque vole en éclats
   for (const d of ch.dust) px(g, d.t > 7 ? '#c8b8c0' : '#6a5060', d.x, sy(d.y));
   // la jauge de saut, au-dessus de la tête : 8 crans
   if (ch.mode === 'play' && ch.side !== 0 && ch.hold) { const n = Math.round(ch.charge * 8), bx = Math.round(ch.x) - 3, by = sy(ch.y) - CH.PH - 6;
@@ -477,20 +523,34 @@ function chDraw() {
   // l'affichage : hauteur, gemmes, alerte
   pxFont(g, chHeight() + ' m', 6, 14, '#ffffff', 12);
   g.drawImage(CH_GEM[0], W - 14, 6); pxFont(g, String(ch.gems), W - 17, 14, '#5ee8c8', 8, 'right');
+  let ix = 6; for (const id of ['piolet', 'casque']) if (ch[id] && ch.mode !== 'over') { g.drawImage(CH_ICON[id], ix, 20); ix += 10; }  // ce qui reste à utiliser cette ascension
+  if (chs.shop.bottes && ch.mode !== 'over') g.drawImage(CH_ICON.bottes, ix, 20);
+  if (ch.banner) { const a = Math.min(1, ch.banner.t / 30, (150 - ch.banner.t) / 15); g.globalAlpha = Math.max(0, a); gameText(g, W, [[ch.banner.text, '#c8a0ff', 10], [(ch.tier === 1 ? 100 : 250) + ' m', '#ffffff']], 60); g.globalAlpha = 1; }
   if (ch.mode === 'play' && lv - sy(ch.y) < 60 && (ch.tick >> 3) % 2) pxFont(g, 'LA LAVE !', W / 2, H - 22, '#ffd84a', 8, 'center');
   if (ch.mode === 'ready') gameText(g, W, [['CHEMINÉE', '#ff8a3a', 16], ['Maintiens Espace,', '#ffffff'], ['lâche pour sauter', '#ffffff'], ['Plus tu maintiens,', '#b8b0c8'], ['plus tu montes', '#b8b0c8'], ['Record ' + (games.best.cheminee || 0) + ' m', '#ffd84a']], 56);
   if (ch.mode === 'pause') gameText(g, W, [['PAUSE', '#ffffff', 12], ['Espace pour reprendre', '#b8b0c8']], 90);
   if (ch.mode === 'over' && ch.dead > 40) gameText(g, W, [[ch.how === 'lave' ? 'ENGLOUTI !' : ch.how === 'scie' ? 'TRANCHÉ !' : 'EMPALÉ !', '#ff8a3a', 12], [chHeight() + ' m · ' + ch.gems + (ch.gems > 1 ? ' gemmes' : ' gemme'), '#ffffff'], [ch.record ? 'NOUVEAU RECORD !' : 'Record ' + (games.best.cheminee || 0) + ' m', '#ffd84a'], [ch.dead > 60 ? 'Espace : recommencer' : '', '#b8b0c8']], 76);
   if (ch.tick % 30 === 0) g.canvas.setAttribute('aria-label', 'Cheminée : ' + (ch.mode === 'play' ? chHeight() + ' mètres, ' + ch.gems + ' gemmes' : ch.mode === 'over' ? 'partie finie à ' + chHeight() + ' mètres' : ch.mode === 'pause' ? 'pause' : 'prêt'));
 }
+function chBuy(id) {
+  const it = CH_ITEMS.find(i => i.id === id); if (!it || chs.shop[id] || chs.wallet < it.price || ch?.mode === 'play') return false;
+  chs.wallet -= it.price; chs.shop[id] = true; if (ch?.mode === 'ready' && id !== 'bottes') ch[id] = true;
+  chBeep(880, .2, 'square', 1320, .05); saveGames(); chInfo(); return true;
+}
 function chInfo() {
+  $('chWallet').textContent = 'Gemmes à dépenser : ' + chs.wallet;
+  $('chShop').replaceChildren(...CH_ITEMS.map(it => { const own = !!chs.shop[it.id], b = el('button', 'btn' + (own ? ' main' : ''), it.name + ' · ' + (own ? 'ACHETÉ' : it.price + ' GEMMES'));
+    b.title = it.tip; b.disabled = own || chs.wallet < it.price || ch?.mode === 'play'; b.onclick = () => { b.blur(); chBuy(it.id); }; return b; }));
   $('chStats').replaceChildren(...[['Plus haut', (games.best.cheminee || 0) + ' m'], ['Parties', chs.games], ['Gemmes', chs.gems], ['Total grimpé', chs.meters + ' m']].flatMap(([a, b]) => [el('span', '', a), el('b', '', String(b))]));
 }
 // appuyer : partir, reprendre ou recommencer, ou commencer à charger ; relâcher : sauter
 function chPress() {
-  if (ch.mode === 'ready') { ch.mode = 'play'; chs.games++; saveGames(); }
+  if (ch.mode === 'play' && ch.side === 0 && ch.vy > 0 && ch.piolet) {  // le piolet : planté dans la paroi la plus proche
+    ch.piolet = false; chBeep(1200, .12, 'square', 400, .05); chLand(ch.x + CH.PW / 2 < CH.W / 2 ? -1 : 1); return;
+  }
+  if (ch.mode === 'ready') { ch.mode = 'play'; chs.games++; saveGames(); chInfo(); }
   else if (ch.mode === 'pause') { ch.mode = 'play'; return; }
-  else if (ch.mode === 'over') { if (ch.dead > 60) chNew(); return; }
+  else if (ch.mode === 'over') { if (ch.dead > 60) { chNew(); chInfo(); } return; }
   ch.hold = true;
 }
 function chRelease() { if (!ch.hold) return; ch.hold = false; chJump(); }
@@ -503,17 +563,44 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (ch && CH_KEYS.includes(e.key)) chRelease(); });
 $('chCanvas').onpointerdown = e => { e.preventDefault(); if (ch) chPress(); };
 document.addEventListener('pointerup', () => { if (ch) chRelease(); });
-$('chNew').onclick = () => { chNew(); $('chNew').blur(); };
-{  // vérification : saut chargé = monte de plus de 80 px, saut bref = redescend ; toujours 40 px libres entre deux pointes d'une paroi
+$('chNew').onclick = () => { chNew(); chInfo(); $('chNew').blur(); };
+$('chFs').onclick = () => { $('chFs').blur(); try { if (document.fullscreenElement) document.exitFullscreen(); else $('chCanvas').parentElement.requestFullscreen?.().catch(() => {}); } catch {} };
+{  // la manette : A, B, X, Y, RB, RT ou croix haut = maintenir pour charger, lâcher pour sauter (et le piolet en chute) ; Start = pause / reprendre
+  const JUMP = [0, 1, 2, 3, 5, 7, 12]; let prev = [];
+  const loop = () => {
+    requestAnimationFrame(loop);
+    const p = [...(navigator.getGamepads?.() || [])].find(Boolean);
+    if (!p || !ch || !view.classList.contains('on')) { prev = []; return; }
+    const now = p.buttons.map(b => b.pressed), held = JUMP.some(i => now[i]), was = JUMP.some(i => prev[i]);
+    if (held && !was) chPress(); else if (!held && was) chRelease();
+    if (now[9] && !prev[9]) { if (ch.mode === 'play') { ch.mode = 'pause'; ch.hold = false; ch.charge = 0; } else if (ch.mode === 'pause') ch.mode = 'play'; }
+    prev = now;
+  };
+  requestAnimationFrame(loop);
+}
+function chCheck() {  // vérification : saut chargé = monte de plus de 80 px, saut bref = redescend ; toujours 40 px libres entre deux pointes d'une paroi ; les objets du magasin
   const keep = ch, realBest = games.best.cheminee, realStats = {...chs}; ch = null;
   const jump = c => { chNew(); ch.mode = 'play'; ch.y = -400; ch.lava = 999; ch.saws = []; ch.spikes = []; ch.wallC = [-1e9, -1e9]; ch.sawC = ch.gemC = -1e9; ch.charge = c; chJump(); let n = 0; while (ch.side === 0 && n++ < 300) chUpdate(); return {dy: ch.y + 400, side: ch.side}; };
   const full = jump(1), tap = jump(0);
   chNew(); chGen(-20000); let gaps = true;
   for (const s of [-1, 1]) { const l = ch.spikes.filter(p => p.side === s).sort((a, b) => b.b - a.b); for (let i = 1; i < l.length; i++) if (l[i - 1].a - l[i].b < 40) gaps = false; }
-  console.assert(full.side === 1 && full.dy < -80 && tap.side === 1 && tap.dy > 0 && gaps, 'cheminee', {full, tap, gaps});
+  const bad = [];
+  if (!(full.side === 1 && full.dy < -80 && tap.side === 1 && tap.dy > 0 && gaps)) bad.push('sauts ' + JSON.stringify({full, tap, gaps}));
+  const shop = chs.shop; chs.shop = {bottes: true}; const boots = jump(1); chs.shop = {casque: true, piolet: true};
+  if (!(boots.dy < full.dy - 10)) bad.push('bottes ' + boots.dy + ' / ' + full.dy);
+  chNew(); ch.mode = 'play'; ch.y = -400; ch.lava = 999; ch.saws = []; ch.wallC = [-1e9, -1e9]; ch.sawC = ch.gemC = -1e9; ch.spikes = [{side: 1, a: -500, b: -300}];
+  chLand(1); if (ch.mode !== 'play' || ch.casque) bad.push('casque'); ch.tick = ch.safe; chUpdate(); if (ch.mode !== 'over' || ch.how !== 'pointes') bad.push('casque une seule fois');
+  chNew(); ch.mode = 'play'; ch.y = -400; ch.lava = 999; ch.saws = []; ch.spikes = []; ch.wallC = [-1e9, -1e9]; ch.sawC = ch.gemC = -1e9; ch.charge = 0; chJump();
+  for (let n = 0; n < 300 && !(ch.vy > 0); n++) chUpdate(); chPress(); if (ch.side === 0 || ch.piolet) bad.push('piolet');
+  ch.side = 0; ch.vy = 1; chPress(); if (ch.side !== 0) bad.push('piolet une seule fois');
+  if (chTier(-500) !== 0 || chTier(-1500) !== 1 || chTier(-3000) !== 2) bad.push('paliers');
+  chs.shop = shop;
   if (realBest === undefined) delete games.best.cheminee; else games.best.cheminee = realBest; Object.assign(chs, realStats);
   ch = keep;
+  return bad.length ? bad.join(', ') : 'ok';
 }
+console.assert(chCheck() === 'ok', 'cheminee', chCheck());
+$('chCanvas').__ch = {st: () => ch, CH, chs, check: chCheck, buy: chBuy, tier: chTier};
 ctx.onOpen(() => {
   if (!ch || !ch.g) { chNew(); ch.g = $('chCanvas').getContext('2d'); }
   gameLoop(ch, 'cheminee', chUpdate, chDraw); chInfo();
