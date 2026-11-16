@@ -88,5 +88,7 @@
   "SOUS LES ÉTOILES": "UNDER THE STARS",
   "Une fois par ascension : en pleine chute, appuie pour planter le piolet dans la paroi la plus proche et t'y accrocher.": "Once per climb: while falling, press to drive the ice axe into the nearest wall and hang on.",
   "Les sauts chargés montent plus haut (+15 %).": "Charged jumps go higher (+15 %).",
-  "Une fois par ascension : un croc ne te tue pas, le casque se brise à sa place.": "Once per climb: a fang does not kill you, the helmet breaks instead."
+  "Une fois par ascension : un croc ne te tue pas, le casque se brise à sa place.": "Once per climb: a fang does not kill you, the helmet breaks instead.",
+  "casque une seule fois": "helmet only once",
+  "piolet une seule fois": "ice axe only once"
 }
