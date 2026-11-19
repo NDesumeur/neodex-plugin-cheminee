@@ -1,9 +1,9 @@
 {
   "pluginId": "neodex.cheminee",
   "repo": "NDesumeur/neodex-plugin-cheminee",
-  "version": "1.1.1",
-  "sha256": "054f1dc4f630b46ceb53c7d4a3a874863075ee9caa39ee6bc2e782cb196b27c0",
-  "approvedAt": "2026-11-16T16:38:47.699Z",
+  "version": "1.1.2",
+  "sha256": "22ce5c1b1175ba3ff677f95b4b15ebd8ee7f94faa1bb6b4f6efb0486dcee52b5",
+  "approvedAt": "2026-11-19T23:26:42.543Z",
   "neobase": ">=4.0.0",
-  "signature": "l+qME9I4SCi4k+9mPKgSzxMFIq/mmUbEDJyzVAa9GURuJPp6+O50XiMdINvrKViHbYhT4d0efxbg837gnKCkCQ=="
+  "signature": "sqT3/jAqeD9gVG3smFgQg1G9FwnzJAWMZgv6nTFi2R30Cv1Oc8b3cOd/tTaSYUYOHL/zeOzzasUWDeJVZJPeCQ=="
 }
