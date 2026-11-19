@@ -1,7 +1,7 @@
 {
   "id": "neodex.cheminee",
   "name": "Cheminée",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": "NDesumeur",
   "description": "Jeu d'escalade : un mineur grimpe une cheminée de volcan en sautant d'une paroi à l'autre. Maintiens pour charger le saut (plus tu maintiens, plus il monte, la trajectoire s'affiche), lâche pour sauter. Évite les crocs plantés dans les parois et les scies qui vont et viennent, ramasse les gemmes, et monte plus vite que la lave. Hauteur, gemmes et record. Magasin de gemmes (piolet, bottes, casque), trois paliers de décor (roche, cristaux, sortie du volcan sous les étoiles), manette, plein écran.",
   "icon": "icon.png",
@@ -14,8 +14,8 @@
     "windows",
     "linux"
   ],
-  "syncMode": "progression",
-  "syncInfo": "Record.",
+  "syncMode": "aucune",
+  "syncInfo": "Rien n'est synchronisé : tes records restent sur cet appareil.",
   "mobile": false,
   "system": false,
   "dependencies": {},
