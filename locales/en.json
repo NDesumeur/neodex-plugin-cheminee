@@ -72,9 +72,8 @@
  "partie finie à": "game over at",
  "plus tu montes": "the higher you go",
  "prêt": "ready",
- "Jeu d'escalade : un mineur grimpe une cheminée de volcan en sautant d'une paroi à l'autre. Maintiens pour charger le saut (plus tu maintiens, plus il monte, la trajectoire s'affiche), lâche pour sauter. Évite les crocs plantés dans les parois et les scies qui vont et viennent, ramasse les gemmes, et monte plus vite que la lave. Hauteur, gemmes et record. Magasin de gemmes (piolet, bottes, casque), trois paliers de décor (roche, cristaux, sortie du volcan sous les étoiles), manette, plein écran.": "Climbing game: a miner climbs a volcano chimney by jumping from one wall to the other. Hold to charge the jump (the longer you hold, the higher it goes, and the path is shown), release to jump. Avoid the fangs stuck in the walls and the saws moving back and forth, pick up gems, and climb faster than the lava. Height, gems and record. Gem shop (ice axe, boots, helmet), three scenery levels (rock, crystals, the volcano's mouth under the stars), gamepad, fullscreen.",
  "Maintiens Espace (ou le clic, ou A à la manette) pour charger, lâche pour sauter · P : pause": "Hold Space (or the click, or A on a gamepad) to charge, release to jump · P: pause",
- "Plus tu maintiens, plus le saut monte : les points blancs montrent où tu vas atterrir. Un saut bref redescend, pratique pour passer sous une scie. Évite les crocs plantés dans les parois (repérés par une trace rouge) et ramasse les gemmes : elles s'achètent au magasin. La lave monte de plus en plus vite. Plus haut, la roche laisse place aux cristaux (100 m), puis à la sortie du volcan sous les étoiles (250 m).": "The longer you hold, the higher the jump: the white dots show where you will land. A short jump goes down, handy to pass under a saw. Avoid the fangs stuck in the walls (marked by a red streak) and pick up the gems: you spend them in the shop. The lava rises faster and faster. Higher up, the rock gives way to crystals (100 m), then to the volcano's mouth under the stars (250 m).",
+ "Plus tu maintiens, plus le saut monte : les points blancs montrent où tu vas atterrir. Un saut bref redescend, pratique pour passer sous une scie. Évite les crocs plantés dans les parois (repérés par une trace rouge) et ramasse les gemmes : elles s'achètent au magasin. La lave monte de plus en plus vite. Plus haut, la roche laisse place aux cristaux (100 m), puis à la sortie du volcan sous les étoiles (250 m). Sur la glace bleue, on glisse vite ; sur la mousse verte, on ne glisse pas du tout. Au-delà de 40 m, le volcan se réveille : pluie de cendres (on ne voit plus que près de soi) ou éruption (la lave monte bien plus vite).": "The longer you hold, the higher the jump: the white dots show where you will land. A short jump goes down, handy to pass under a saw. Avoid the fangs stuck in the walls (marked by a red streak) and pick up the gems: you spend them in the shop. The lava rises faster and faster. Higher up, the rock gives way to crystals (100 m), then to the volcano's mouth under the stars (250 m). On blue ice you slide fast; on green moss you do not slide at all. Above 40 m the volcano wakes up: ash rain (you only see what is close to you) or an eruption (the lava rises much faster).",
  "PLEIN ÉCRAN": "FULLSCREEN",
  "MAGASIN DE GEMMES": "GEM SHOP",
  "Gemmes à dépenser :": "Gems to spend:",
@@ -90,5 +89,14 @@
  "Une fois par ascension : un croc ne te tue pas, le casque se brise à sa place.": "Once per climb: a fang does not kill you, the helmet breaks instead.",
  "casque une seule fois": "helmet only once",
  "piolet une seule fois": "ice axe only once",
- "Rien n'est synchronisé : tes records restent sur cet appareil.": "Nothing is synced: your records stay on this device."
+ "Rien n'est synchronisé : tes records restent sur cet appareil.": "Nothing is synced: your records stay on this device.",
+ "PLUIE DE CENDRES": "ASH RAIN",
+ "on n'y voit plus": "you can barely see",
+ "ÉRUPTION !": "ERUPTION!",
+ "la lave accélère": "the lava speeds up",
+ "glace et mousse": "ice and moss",
+ "pas de pluie de cendres": "no ash rain",
+ "pas d’éruption": "no eruption",
+ "l’éruption n’accélère pas la lave": "the eruption does not speed up the lava",
+ "Jeu d'escalade : un mineur grimpe une cheminée de volcan en sautant d'une paroi à l'autre. Maintiens pour charger le saut (plus tu maintiens, plus il monte, la trajectoire s'affiche), lâche pour sauter. Évite les crocs plantés dans les parois et les scies qui vont et viennent, ramasse les gemmes, et monte plus vite que la lave. Hauteur, gemmes et record. Magasin de gemmes (piolet, bottes, casque), trois paliers de décor (roche, cristaux, sortie du volcan sous les étoiles), manette, plein écran. Parois de glace et de mousse, pluie de cendres et éruptions.": "Climbing game: a miner climbs a volcano chimney by jumping from one wall to the other. Hold to charge the jump (the longer you hold, the higher it goes, and the path is shown), release to jump. Avoid the fangs stuck in the walls and the saws moving back and forth, pick up gems, and climb faster than the lava. Height, gems and record. Gem shop (ice axe, boots, helmet), three scenery levels (rock, crystals, the volcano's mouth under the stars), gamepad, fullscreen. Ice and moss walls, ash rain and eruptions."
 }

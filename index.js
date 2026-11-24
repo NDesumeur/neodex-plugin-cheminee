@@ -7,7 +7,7 @@ const HTML = `<div class="appWrap wide">
       <div class="sysCard"><b>RECORDS</b><div class="gStats" id="chStats"></div></div>
       <div class="row"><button class="btn main" id="chNew">NOUVELLE ASCENSION</button><button class="btn" id="chFs">PLEIN ÉCRAN</button></div>
       <div class="sysCard"><b>MAGASIN DE GEMMES</b><span class="hint" id="chWallet"></span><div class="chShop" id="chShop"></div></div>
-      <div class="hint">Plus tu maintiens, plus le saut monte : les points blancs montrent où tu vas atterrir. Un saut bref redescend, pratique pour passer sous une scie. Évite les crocs plantés dans les parois (repérés par une trace rouge) et ramasse les gemmes : elles s'achètent au magasin. La lave monte de plus en plus vite. Plus haut, la roche laisse place aux cristaux (100 m), puis à la sortie du volcan sous les étoiles (250 m).</div>
+      <div class="hint">Plus tu maintiens, plus le saut monte : les points blancs montrent où tu vas atterrir. Un saut bref redescend, pratique pour passer sous une scie. Évite les crocs plantés dans les parois (repérés par une trace rouge) et ramasse les gemmes : elles s'achètent au magasin. La lave monte de plus en plus vite. Plus haut, la roche laisse place aux cristaux (100 m), puis à la sortie du volcan sous les étoiles (250 m). Sur la glace bleue, on glisse vite ; sur la mousse verte, on ne glisse pas du tout. Au-delà de 40 m, le volcan se réveille : pluie de cendres (on ne voit plus que près de soi) ou éruption (la lave monte bien plus vite).</div>
     </div></div>
 </div>`;
 const CSS = `.gMain{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
@@ -396,7 +396,7 @@ const chDiff = () => Math.min(1, ch.top / 3000);
 const chHeight = () => Math.max(0, Math.floor(ch.top / 10));
 function chNew() {
   ch = Object.assign(ch || {tick: 0, raf: 0}, {seen: ch ? ch.tick : 0, mode: 'ready', x: CH.L, y: 0, vx: 0, vy: 0, side: -1, charge: 0, hold: false, slide: 0, top: 0,
-    cam: -CH.H * .6, lava: 150, gems: 0, dead: 0, record: false, piolet: !!chs.shop.piolet, casque: !!chs.shop.casque, safe: 0, tier: 0, banner: null, crack: 0, spikes: [], saws: [], gemsL: [], dust: [], wallC: [-120, -170], sawC: -230, gemC: -90, rnd: seeded(Math.random() * 1e9 | 0)});
+    cam: -CH.H * .6, lava: 150, gems: 0, dead: 0, record: false, piolet: !!chs.shop.piolet, casque: !!chs.shop.casque, safe: 0, tier: 0, banner: null, crack: 0, spikes: [], saws: [], gemsL: [], dust: [], patches: [], patchC: -260, ev: null, nextEv: 0, ash: [], shake: 0, events: 0, wallC: [-120, -170], sawC: -230, gemC: -90, rnd: seeded(Math.random() * 1e9 | 0)});
   chGen(ch.cam - CH.H);
 }
 // crée parois à pointes, scies et gemmes jusqu'à la hauteur upTo (y monde, négatif vers le haut) ; entre deux pointes, toujours au moins 40 px libres
@@ -412,9 +412,21 @@ function chGen(upTo) {
       : {vert: false, y0: ch.sawC, sp: (.5 + r() * .4 + d * 1.1) * (r() < .5 ? -1 : 1), x: CH.L + CH.PW + 8 + r() * (CH.R - CH.L - CH.PW - 16)});
     ch.sawC -= 150 - d * 60 + r() * 80;
   }
+  while (ch.patchC > upTo) { const len = 30 + Math.floor(r() * 9) * 6; ch.patches.push({side: r() < .5 ? -1 : 1, a: ch.patchC - len, b: ch.patchC, kind: r() < .5 ? 'ice' : 'moss'}); ch.patchC -= len + 60 + r() * 140; }  // glace et mousse
   while (ch.gemC > upTo) { ch.gemsL.push({x: CH.L + 18 + r() * (CH.R - CH.L - 26), y: ch.gemC}); ch.gemC -= 70 + r() * 60; }
 }
 const chSawPos = s => s.vert ? {x: s.side < 0 ? CH.L + 4 : CH.R + CH.PW - 4, y: s.y0 + Math.sin(ch.tick * s.sp + s.ph) * s.amp} : {x: s.x, y: s.y0};
+const chSurf = (side, y) => ch.patches.find(p => p.side === side && y - 2 > p.a && y - CH.PH + 2 < p.b)?.kind;  // la paroi sous les mains : 'ice', 'moss' ou rien
+const CH_EV = {cendres: ['PLUIE DE CENDRES', 'on n\'y voit plus'], eruption: ['ÉRUPTION !', 'la lave accélère']};
+function chEvents() {  // le volcan se réveille : un événement de 6 s environ, toutes les 15 à 25 s au-delà de 40 m
+  if (ch.ev) { if (--ch.ev.t <= 0) ch.ev = null; }
+  else if (chHeight() >= 40) { if (!ch.nextEv) ch.nextEv = ch.tick + 300; else if (ch.tick >= ch.nextEv) {
+    const kind = ch.events % 2 ? 'eruption' : 'cendres'; ch.events++; ch.ev = {kind, t: kind === 'eruption' ? 300 : 420}; ch.nextEv = ch.tick + ch.ev.t + 900 + Math.floor(ch.rnd() * 600);
+    ch.banner = {text: CH_EV[kind][0], sub: CH_EV[kind][1], t: 120}; chBeep(kind === 'eruption' ? 90 : 300, .8, 'sawtooth', kind === 'eruption' ? 40 : 150, .05); if (kind === 'eruption') ch.shake = 30; } }
+  if (ch.ev?.kind === 'cendres' && ch.tick % 2 === 0) ch.ash.push({x: Math.random() * CH.W, y: ch.cam - 4, v: .5 + Math.random() * .7, s: Math.random() < .3 ? 2 : 1});
+  for (const a of ch.ash) { a.y += a.v; a.x += Math.sin((a.y + a.x) / 13) * .3; } ch.ash = ch.ash.filter(a => a.y < ch.cam + CH.H + 4);
+  if (ch.shake > 0) ch.shake--;
+}
 const chOnSpike = (side, y) => ch.spikes.some(p => p.side === side && y - 2 > p.a && y - CH.PH + 2 < p.b);
 let chac = null;
 function chBeep(f, d, type = 'triangle', slide = 0, vol = .06) { try { chac ??= new AudioContext(); const o = chac.createOscillator(), g = chac.createGain(), t = chac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(chac.destination); o.start(t); o.stop(t + d); } catch {} }
@@ -446,7 +458,7 @@ function chUpdate() {
   const d = chDiff();
   if (ch.side !== 0) {  // accroché : on glisse, de plus en plus vite ; on s'accroupit en chargeant
     if (ch.hold) ch.charge = Math.min(1, ch.charge + 1 / CH.CHARGE);
-    ch.slide = Math.min(.8, ch.slide + .006); ch.y += ch.slide; if (ch.lava > 0) ch.y = Math.min(ch.y, 0);  // le sol de départ tient tant que la lave ne l'a pas recouvert
+    const surf = chSurf(ch.side, ch.y); ch.slide = surf === 'moss' ? 0 : surf === 'ice' ? Math.min(2, ch.slide + .04) : Math.min(.8, ch.slide + .006); ch.y += ch.slide; if (ch.lava > 0) ch.y = Math.min(ch.y, 0);  // le sol de départ tient tant que la lave ne l'a pas recouvert
     if (chOnSpike(ch.side, ch.y)) return chDie('pointes');
   } else {
     ch.vy = Math.min(6, ch.vy + CH.G); ch.y += ch.vy; ch.x += ch.vx;
@@ -458,7 +470,8 @@ function chUpdate() {
   if (chTier(-ch.top) > ch.tier) { ch.tier = chTier(-ch.top); ch.banner = {text: CH_TIER_NAMES[ch.tier], t: 150}; chBeep(523, .5, 'triangle', 1046, .05); }
   if (ch.banner && --ch.banner.t <= 0) ch.banner = null;
   // la lave : lente au début, plus pressante en hauteur, et jamais à plus de 180 px sous le grimpeur
-  ch.lava = Math.min(ch.lava - (.14 + d * .36), ch.y + 180);
+  chEvents(); const er = ch.ev?.kind === 'eruption';
+  ch.lava = Math.min(ch.lava - (.14 + d * .36) * (er ? 2.6 : 1), ch.y + (er ? 110 : 180));
   for (const s of ch.saws) if (!s.vert) { s.x += s.sp; if (s.x < CH.L + 8 || s.x > CH.R + CH.PW - 8) s.sp = -s.sp; }
   const cx = ch.x + CH.PW / 2, cy = ch.y - CH.PH / 2;
   for (const s of ch.saws) { const p = chSawPos(s), nx = Math.max(ch.x + 1, Math.min(p.x, ch.x + CH.PW - 1)), ny = Math.max(ch.y - CH.PH + 1, Math.min(p.y, ch.y - 1)); if (Math.hypot(p.x - nx, p.y - ny) < 5.5) return chDie('scie'); }
@@ -477,7 +490,7 @@ function chPath(charge) {
   return pts;
 }
 function chDraw() {
-  const g = ch.g, {W, H, WALL} = CH, cam = Math.round(ch.cam), sy = y => Math.round(y - cam);
+  const g = ch.g, {W, H, WALL} = CH, cam = Math.round(ch.cam + (ch.shake ? (ch.tick % 4 < 2 ? 1 : -1) * Math.ceil(ch.shake / 10) : 0)), sy = y => Math.round(y - cam);
   for (; ch.seen < ch.tick; ch.seen++) if (ch.mode !== 'play') chUpdate();
   g.imageSmoothingEnabled = false;
   // le fond (parallaxe à moitié) et les braises rougeoyantes dans les fissures
@@ -495,6 +508,10 @@ function chDraw() {
     for (let y = top; y < bot; y += 6) for (let i = 0; i < 5; i++) { const w = 5 - Math.abs(i - 2) * 2, x0 = p.side < 0 ? WALL : W - WALL - w;
       px(g, '#1a0e14', x0 + (p.side < 0 ? 0 : -1), y + i, w + 1, 1); px(g, i < 2 ? '#f0e8d8' : '#b8a898', x0 + (p.side < 0 ? 0 : 1), y + i, Math.max(1, w - 1), 1); }
     px(g, '#7a1a1a', p.side < 0 ? WALL - 2 : W - WALL, top, 2, bot - top); }
+  for (const p of ch.patches) { const top = sy(p.a), bot = sy(p.b); if (bot < -2 || top > H + 2) continue; const x0 = p.side < 0 ? WALL - 4 : W - WALL;
+    if (p.kind === 'ice') { px(g, '#a8e0ff', x0, top, 4, bot - top); px(g, '#e8f8ff', p.side < 0 ? x0 + 3 : x0, top, 1, bot - top); for (let y = top + 3; y < bot; y += 9) { px(g, '#ffffff', x0 + 1, y, 2, 1); px(g, '#6ab0e0', x0 + 1, y + 4, 2, 1); }
+      for (let x = 0; x < 3; x++) px(g, '#c8ecff', p.side < 0 ? WALL + x : W - WALL - 1 - x, bot, 1, 3 - x); }  // une petite stalactite de glace
+    else { px(g, '#2a6a2a', x0, top, 4, bot - top); for (let y = top; y < bot; y += 3) { const t = (y * 7 + p.a) % 5; px(g, t < 2 ? '#6ac84a' : '#4a9a3a', p.side < 0 ? WALL + (t % 2) - 1 : W - WALL - (t % 2), y, 2, 2); } } }
   // les gemmes
   for (const gm of ch.gemsL) if (!gm.got && sy(gm.y) > -8 && sy(gm.y) < H) g.drawImage(CH_GEM[(ch.tick >> 4) % 2], Math.round(gm.x), sy(gm.y) + (Math.floor(ch.tick / 12 + gm.x) % 2));
   // les scies et leur rail
@@ -520,12 +537,17 @@ function chDraw() {
     for (let i = 0; i < 6; i++) { const bx = (i * 37 + Math.floor(ch.tick / 40) * 13) % W, ph = (ch.tick + i * 23) % 60; if (ph < 30) px(g, ph < 20 ? '#ffd84a' : '#ffffff', bx, lv + 10 - (ph >> 2), 2, 2); }
     for (let y = lv + 9; y < H; y += 5) for (let x = (y * 7) % 11; x < W; x += 11) px(g, '#a8200a', x, y, 3, 1);
   }
+  if (ch.ev?.kind === 'cendres' || ch.ash.length) {  // la pluie de cendres : des flocons gris, et le noir autour du grimpeur
+    for (const a of ch.ash) px(g, a.s > 1 ? '#8a7a80' : '#5a4a50', a.x, sy(a.y), a.s, a.s);
+    if (ch.ev?.kind === 'cendres' && ch.mode === 'play') { const k = Math.min(1, ch.ev.t / 40, (420 - ch.ev.t) / 40); g.fillStyle = 'rgba(16,8,12,' + (.82 * k).toFixed(2) + ')'; const cx = ch.x + CH.PW / 2, cy = sy(ch.y) - CH.PH / 2;
+      for (let y = 0; y < H; y += 2) { const dy = y + 1 - cy, dx = Math.abs(dy) < 44 ? Math.sqrt(44 * 44 - dy * dy) : 0; if (!dx) g.fillRect(0, y, W, 2); else { g.fillRect(0, y, Math.max(0, Math.round(cx - dx)), 2); g.fillRect(Math.round(cx + dx), y, W, 2); } } } }
+  if (ch.ev?.kind === 'eruption') { for (let i = 0; i < 4; i++) px(g, i % 2 ? '#ffd84a' : '#ff5a1a', (ch.tick * 7 + i * 41) % W, H - ((ch.tick * 3 + i * 53) % H), 1, 2); g.fillStyle = 'rgba(255,60,10,' + (.08 + .05 * Math.sin(ch.tick / 5)).toFixed(2) + ')'; g.fillRect(0, 0, W, H); }
   // l'affichage : hauteur, gemmes, alerte
   pxFont(g, chHeight() + ' m', 6, 14, '#ffffff', 12);
   g.drawImage(CH_GEM[0], W - 14, 6); pxFont(g, String(ch.gems), W - 17, 14, '#5ee8c8', 8, 'right');
   let ix = 6; for (const id of ['piolet', 'casque']) if (ch[id] && ch.mode !== 'over') { g.drawImage(CH_ICON[id], ix, 20); ix += 10; }  // ce qui reste à utiliser cette ascension
   if (chs.shop.bottes && ch.mode !== 'over') g.drawImage(CH_ICON.bottes, ix, 20);
-  if (ch.banner) { const a = Math.min(1, ch.banner.t / 30, (150 - ch.banner.t) / 15); g.globalAlpha = Math.max(0, a); gameText(g, W, [[ch.banner.text, '#c8a0ff', 10], [(ch.tier === 1 ? 100 : 250) + ' m', '#ffffff']], 60); g.globalAlpha = 1; }
+  if (ch.banner) { const a = Math.min(1, ch.banner.t / 30, (150 - ch.banner.t) / 15); g.globalAlpha = Math.max(0, a); gameText(g, W, [[ch.banner.text, ch.banner.sub ? '#ff8a3a' : '#c8a0ff', 10], [ch.banner.sub || (ch.tier === 1 ? 100 : 250) + ' m', '#ffffff']], 60); g.globalAlpha = 1; }
   if (ch.mode === 'play' && lv - sy(ch.y) < 60 && (ch.tick >> 3) % 2) pxFont(g, 'LA LAVE !', W / 2, H - 22, '#ffd84a', 8, 'center');
   if (ch.mode === 'ready') gameText(g, W, [['CHEMINÉE', '#ff8a3a', 16], ['Maintiens Espace,', '#ffffff'], ['lâche pour sauter', '#ffffff'], ['Plus tu maintiens,', '#b8b0c8'], ['plus tu montes', '#b8b0c8'], ['Record ' + (games.best.cheminee || 0) + ' m', '#ffd84a']], 56);
   if (ch.mode === 'pause') gameText(g, W, [['PAUSE', '#ffffff', 12], ['Espace pour reprendre', '#b8b0c8']], 90);
@@ -594,13 +616,19 @@ function chCheck() {  // vérification : saut chargé = monte de plus de 80 px, 
   for (let n = 0; n < 300 && !(ch.vy > 0); n++) chUpdate(); chPress(); if (ch.side === 0 || ch.piolet) bad.push('piolet');
   ch.side = 0; ch.vy = 1; chPress(); if (ch.side !== 0) bad.push('piolet une seule fois');
   if (chTier(-500) !== 0 || chTier(-1500) !== 1 || chTier(-3000) !== 2) bad.push('paliers');
+  const cling = kind => { chNew(); ch.mode = 'play'; ch.y = -400; ch.lava = 999; ch.saws = []; ch.spikes = []; ch.wallC = [-1e9, -1e9]; ch.sawC = ch.gemC = ch.patchC = -1e9; ch.side = -1; ch.x = CH.L; ch.top = 0;
+    ch.patches = kind ? [{side: -1, a: -900, b: -100, kind}] : []; for (let i = 0; i < 60; i++) chUpdate(); return ch.y + 400; };
+  const sn = cling(null), si = cling('ice'), sm = cling('moss'); if (!(si > sn * 2 && sm === 0 && sn > 0)) bad.push('glace et mousse ' + [sn, si, sm].map(Math.round));
+  chNew(); ch.mode = 'play'; ch.y = -400; ch.lava = 999; ch.saws = []; ch.spikes = []; ch.side = -1; ch.x = CH.L; ch.top = 400; ch.nextEv = 1; ch.tick = 5; chUpdate();
+  if (ch.ev?.kind !== 'cendres') bad.push('pas de pluie de cendres'); ch.ev = null; ch.nextEv = 1; chUpdate(); if (ch.ev?.kind !== 'eruption') bad.push('pas d’éruption');
+  ch.y = -800; const l0 = ch.lava = -760; chUpdate(); const fast = l0 - ch.lava; ch.ev = null; ch.nextEv = 1e9; ch.y = -800; ch.lava = -760; chUpdate(); if (!(fast > (-760 - ch.lava) * 2)) bad.push('l’éruption n’accélère pas la lave');
   chs.shop = shop;
   if (realBest === undefined) delete games.best.cheminee; else games.best.cheminee = realBest; Object.assign(chs, realStats);
   ch = keep;
   return bad.length ? bad.join(', ') : 'ok';
 }
 console.assert(chCheck() === 'ok', 'cheminee', chCheck());
-$('chCanvas').__ch = {st: () => ch, CH, chs, check: chCheck, buy: chBuy, tier: chTier};
+$('chCanvas').__ch = {st: () => ch, CH, chs, check: chCheck, buy: chBuy, tier: chTier, gen: chGen};
 ctx.onOpen(() => {
   if (!ch || !ch.g) { chNew(); ch.g = $('chCanvas').getContext('2d'); }
   gameLoop(ch, 'cheminee', chUpdate, chDraw); chInfo();

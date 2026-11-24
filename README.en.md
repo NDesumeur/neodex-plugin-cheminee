@@ -4,6 +4,12 @@ A pixel art climbing game: a miner climbs a volcano chimney by jumping from one 
 
 *Version française : [README.md](README.md)*
 
+
+## Varied walls and a waking volcano (new in 1.2.0)
+
+- **Blue ice**: while clinging to it, you slide very fast. **Green moss**: you do not slide at all, time to aim well.
+- Above 40 m, an event every 15 to 25 seconds: **ash rain** (everything goes dark except around the climber) or an **eruption** (the chimney shakes and the lava rises much faster).
+
 ## Controls
 
 - **Space**, **↑** or **click**: hold to charge the jump, release to jump to the opposite wall.

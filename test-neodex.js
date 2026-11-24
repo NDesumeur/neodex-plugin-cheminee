@@ -40,6 +40,9 @@ module.exports = async ({ pj, sleep }) => {
     if (t !== (h === 1500 ? '1|LES CRISTAUX' : '2|SOUS LES ÉTOILES')) throw new Error('palier à ' + h / 10 + ' m : ' + t);
   }
   await C(`const k = ${keep}; chs.wallet = k.w; chs.shop = k.s; T.st().mode = 'pause'; return 0;`);
+  // glace, mousse et pluie de cendres, pour l'image
+  await pj(`(() => { const T = document.getElementById('chCanvas').__ch, ch = T.st(); ch.mode = 'play'; ch.y = -600; ch.top = 600; ch.cam = -720; ch.lava = 999; ch.side = -1; ch.x = T.CH.L; ch.saws = []; ch.spikes = []; ch.patches = [{side: -1, a: -700, b: -560, kind: 'moss'}, {side: 1, a: -760, b: -620, kind: 'ice'}]; ch.patchC = ch.wallC[0] = ch.wallC[1] = ch.sawC = -1e9; ch.ev = {kind: 'cendres', t: 300}; ch.nextEv = 1e9; ch.banner = null; return 0; })()`);
+  await sleep(900); await shot('5-cendres');
   const errs = await pj(`window.__e.join(' | ')`); if (errs) throw new Error('erreur : ' + errs);
   // plein écran, et la zone de jeu qui tient dans la fenêtre
   await pj(`document.getElementById('chFs').click(), 0`); await sleep(700);
@@ -49,5 +52,5 @@ module.exports = async ({ pj, sleep }) => {
   const L = await pj(`(() => { const r = document.getElementById('chCanvas').getBoundingClientRect(); let s = 0; for (let e = document.getElementById('chCanvas').parentElement; e; e = e.parentElement) s += e.scrollTop; return { bottom: Math.round(r.bottom + s), h: Math.round(r.height), wh: innerHeight, ww: innerWidth, sw: document.documentElement.scrollWidth }; })()`);
   if (process.env.NEO_FIT_LOG) console.log('FIT', JSON.stringify(L));
   if (L.bottom > L.wh + 1 || L.sw > L.ww + 1 || L.h < 300) throw new Error('la zone de jeu dépasse la fenêtre ou reste petite : ' + JSON.stringify(L));
-  return 'vérification ok · ' + m + ' m au clavier · ' + top + ' m à la manette · magasin · cristaux et étoiles · plein écran · ' + L.h + ' px dans ' + L.ww + '×' + L.wh;
+  return 'vérification ok · ' + m + ' m au clavier · ' + top + ' m à la manette · magasin · glace, mousse, cendres · cristaux et étoiles · plein écran · ' + L.h + ' px dans ' + L.ww + '×' + L.wh;
 };

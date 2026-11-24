@@ -4,6 +4,12 @@ Un jeu d'escalade en pixel art : un mineur grimpe une cheminée de volcan en sau
 
 *English version: [README.en.md](README.en.md)*
 
+
+## Parois variées et volcan qui se réveille (nouveau en 1.2.0)
+
+- **Glace bleue** : accroché dessus, on glisse très vite. **Mousse verte** : on ne glisse plus du tout, le temps de bien viser.
+- Au-delà de 40 m, un événement toutes les 15 à 25 secondes : la **pluie de cendres** (tout devient noir sauf autour du grimpeur) ou l'**éruption** (la cheminée tremble et la lave monte bien plus vite).
+
 ## Commandes
 
 - **Espace**, **↑** ou **clic** : maintiens pour charger le saut, lâche pour sauter vers la paroi d'en face.
