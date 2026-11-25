@@ -1,7 +1,7 @@
 {
   "id": "neodex.cheminee",
   "name": "Cheminée",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": "NDesumeur",
   "description": "Jeu d'escalade : un mineur grimpe une cheminée de volcan en sautant d'une paroi à l'autre. Maintiens pour charger le saut (plus tu maintiens, plus il monte, la trajectoire s'affiche), lâche pour sauter. Évite les crocs plantés dans les parois et les scies qui vont et viennent, ramasse les gemmes, et monte plus vite que la lave. Hauteur, gemmes et record. Magasin de gemmes (piolet, bottes, casque), trois paliers de décor (roche, cristaux, sortie du volcan sous les étoiles), manette, plein écran. Parois de glace et de mousse, pluie de cendres et éruptions.",
   "icon": "icon.png",
@@ -22,5 +22,57 @@
   "sdk": "2.1.0",
   "permissions": [
     "storage"
+  ],
+  "succes": [
+    {
+      "id": "premier",
+      "nom": "Premier saut",
+      "texte": "Finir une première ascension"
+    },
+    {
+      "id": "m50",
+      "nom": "Grimpeur",
+      "texte": "Monter à 50 mètres"
+    },
+    {
+      "id": "m150",
+      "nom": "Ramoneur de volcan",
+      "texte": "Monter à 150 mètres"
+    },
+    {
+      "id": "m300",
+      "nom": "Vers le cratère",
+      "texte": "Monter à 300 mètres",
+      "cache": true
+    },
+    {
+      "id": "gemmes",
+      "nom": "Poches pleines",
+      "texte": "Ramasser 500 gemmes en tout"
+    },
+    {
+      "id": "achat",
+      "nom": "Bien équipé",
+      "texte": "Acheter un objet à la boutique"
+    },
+    {
+      "id": "boutique",
+      "nom": "Tout l'équipement",
+      "texte": "Acheter tous les objets de la boutique"
+    },
+    {
+      "id": "km",
+      "nom": "Un kilomètre",
+      "texte": "Monter 1 000 mètres en tout"
+    }
+  ],
+  "records": [
+    {
+      "id": "hauteur",
+      "nom": "Plus haut",
+      "sens": "haut",
+      "format": "nombre",
+      "unite": "m"
+    }
   ]
 }

@@ -305,6 +305,9 @@ export default async function (ctx) {
   const best = (k, v) => { const b = games.best[k]; if (v > (b ?? 0)) {  // un score nul n'est jamais un record
     games.best[k] = v; saveGames(); return true; } return false; };
   const gstore = (k, init) => (games[k] ??= init);
+  // les trophées de NeoDex (3.4.8 et plus) : succès et records déclarés dans plugin.json ; sur un NeoDex plus ancien, rien ne se passe
+  const trophy = id => { ctx.games?.unlock(id).catch(() => {}); };
+  const trophyRecord = (id, v) => { if (v != null && Number.isFinite(+v)) ctx.games?.record(id, +v).catch(() => {}); };
 function gameLoop(st, appKey, update, draw) {
   cancelAnimationFrame(st.raf);
   const STEP = 1000 / 60; let acc = 0, last = performance.now();
@@ -560,6 +563,7 @@ function chBuy(id) {
   chBeep(880, .2, 'square', 1320, .05); saveGames(); chInfo(); return true;
 }
 function chInfo() {
+  setTimeout(chTrophies);
   $('chWallet').textContent = 'Gemmes à dépenser : ' + chs.wallet;
   $('chShop').replaceChildren(...CH_ITEMS.map(it => { const own = !!chs.shop[it.id], b = el('button', 'btn' + (own ? ' main' : ''), it.name + ' · ' + (own ? 'ACHETÉ' : it.price + ' GEMMES'));
     b.title = it.tip; b.disabled = own || chs.wallet < it.price || ch?.mode === 'play'; b.onclick = () => { b.blur(); chBuy(it.id); }; return b; }));
@@ -629,6 +633,13 @@ function chCheck() {  // vérification : saut chargé = monte de plus de 80 px, 
 }
 console.assert(chCheck() === 'ok', 'cheminee', chCheck());
 $('chCanvas').__ch = {st: () => ch, CH, chs, check: chCheck, buy: chBuy, tier: chTier, gen: chGen};
+// les trophées, tirés des statistiques et des records gardés (aussi à l'ouverture : ce qui a été fait avant compte)
+function chTrophies() {
+  const b = games.best.cheminee, own = CH_ITEMS.filter(i => chs.shop[i.id]).length, sig = [b, chs.games, chs.gems, chs.meters, own].join(); if (sig === chTrophies.sig) return; chTrophies.sig = sig;
+  trophyRecord('hauteur', b || null);
+  if (b != null) trophy('premier'); if (b >= 50) trophy('m50'); if (b >= 150) trophy('m150'); if (b >= 300) trophy('m300');
+  if (chs.gems >= 500) trophy('gemmes'); if (own) trophy('achat'); if (own >= CH_ITEMS.length) trophy('boutique'); if (chs.meters >= 1000) trophy('km');
+}
 ctx.onOpen(() => {
   if (!ch || !ch.g) { chNew(); ch.g = $('chCanvas').getContext('2d'); }
   gameLoop(ch, 'cheminee', chUpdate, chDraw); chInfo();
